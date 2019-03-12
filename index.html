@@ -19,10 +19,32 @@
     <div id="text" class="text"></div>
   </div>
 
+  <script type="x-shader/x-vertex" id="vertexshader">
+      attribute float size;
+      varying vec3 vColor;
+      void main() {
+        vColor = color;
+        vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+        gl_PointSize = size * ( 800.0 / -mvPosition.z );
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    </script>
+
+    <script type="x-shader/x-fragment" id="fragmentshader">
+      uniform sampler2D texture;
+      varying vec3 vColor;
+      void main() {
+        gl_FragColor = vec4( vColor, 1.0 );
+        vec2 scaledPoint = vec2(gl_PointCoord.x*0.05, gl_PointCoord.y*0.01);
+        gl_FragColor = gl_FragColor * texture2D(texture, scaledPoint);
+      }
+    </script>
+
   <script src="js/vendor/jquery-3.3.1.min.js"></script>
   <script src="js/vendor/underscore-min.js"></script>
   <script src="js/vendor/three.min.js"></script>
   <script src="js/vendor/howler.min.js"></script>
+  <script src="js/vendor/three.orbit.controls.js"></script>
   <script src="js/app.js"></script>
 </body>
 
