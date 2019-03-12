@@ -1,0 +1,10 @@
+{
+  "name": "collections-history",
+  "description": "A data-driven story of AMNH's collections history, present and future",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "devDependencies": {
+    "express": "^4.16.4"
+  }
+}
