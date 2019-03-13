@@ -8,3 +8,9 @@
   left: 0;
   overflow: hidden;
 }
+.canvas {
+  width: 110%;
+  height: 110%;
+  left: -5%;
+  top: -5%;
+}

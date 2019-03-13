@@ -10,8 +10,8 @@ import sys
 # input
 parser = argparse.ArgumentParser()
 parser.add_argument('-in', dest="INPUT_FILES", default="downloads/specimens/*.jpg", help="Input file pattern")
-parser.add_argument('-tile', dest="TILE_SIZE", default="100x100", help="Tile size in pixels")
-parser.add_argument('-grid', dest="GRID_SIZE", default="10x100", help="Grid size in cols x rows")
+parser.add_argument('-tile', dest="TILE_SIZE", default="128x128", help="Tile size in pixels")
+parser.add_argument('-grid', dest="GRID_SIZE", default="8x128", help="Grid size in cols x rows")
 parser.add_argument('-out', dest="OUTPUT_FILE", default="img/specimen_spritesheet.jpg", help="File for output")
 a = parser.parse_args()
 
@@ -59,7 +59,7 @@ def fillImage(img, w, h):
 
     return cropped
 
-print("Building stylesheet...")
+print("Building spritesheet...")
 for row in range(gridH):
     for col in range(gridW):
         # open file

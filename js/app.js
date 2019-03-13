@@ -10,12 +10,12 @@ var App = (function() {
     var defaults = {
       // for displaying zoomed-in group
       "spritesheet": "img/specimen_spritesheet.jpg",
-      "spriteW": 10,
-      "spriteH": 100,
-      "tileW": 100,
-      "tileH": 100,
-      "groupW": 40,
-      "groupH": 25,
+      "spriteW": 8,
+      "spriteH": 128,
+      "tileW": 128,
+      "tileH": 128,
+      "groupW": 32,
+      "groupH": 32,
       "groupMargin": 0,
 
       "containerEl": "#canvas",
@@ -58,13 +58,6 @@ var App = (function() {
 
     scene.add(new THREE.AxesHelper(10000));
 
-    geometry = new THREE.BufferGeometry();
-    var attributes = {
-      displacement: {
-        type: 'f', // a float
-        value: [] // an empty array
-      }
-    };
     var vertices = [];
     var sizes = [];
     var cellW = opt.tileW + opt.groupMargin * 2;
@@ -78,14 +71,27 @@ var App = (function() {
         var z = 0;
         vertices.push(x, y, z);
         sizes.push(opt.tileW);
+
       }
     }
+    var cellOffsets = [];
+    for (var row=0; row<opt.spriteH; row++) {
+      for (var col=0; col<opt.spriteW; col++) {
+        cellOffsets.push(col, row);
+      }
+    }
+    geometry = new THREE.BufferGeometry();
     geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3).setDynamic(true));
     geometry.addAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+    geometry.addAttribute('cellOffset', new THREE.Float32BufferAttribute(cellOffsets, 2));
 
     uniforms = {
-      texture: { value: new THREE.TextureLoader().load(opt.spritesheet) }
+      texture: { value: new THREE.TextureLoader().load(opt.spritesheet) },
+      cameraZ: { type: 'f', value: camera.position.z },
+      cellSize: { value: new THREE.Vector2(1.0/opt.spriteW, 1.0/opt.spriteH) }
     };
+
+    uniforms.texture.value.flipY = false;
 
     var shaderMaterial = new THREE.ShaderMaterial( {
       uniforms: uniforms,
