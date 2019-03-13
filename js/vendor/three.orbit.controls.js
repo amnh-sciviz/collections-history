@@ -700,19 +700,19 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 				if ( event.ctrlKey || event.metaKey || event.shiftKey ) {
 
-					if ( scope.enablePan === false ) return;
-
-					handleMouseDownPan( event );
-
-					state = STATE.PAN;
-
-				} else {
-
 					if ( scope.enableRotate === false ) return;
 
 					handleMouseDownRotate( event );
 
 					state = STATE.ROTATE;
+
+				} else {
+
+					if ( scope.enablePan === false ) return;
+
+					handleMouseDownPan( event );
+
+					state = STATE.PAN;
 
 				}
 
@@ -730,11 +730,11 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 			case scope.mouseButtons.RIGHT:
 
-				if ( scope.enablePan === false ) return;
+				if ( scope.enableRotate === false ) return;
 
-				handleMouseDownPan( event );
+				handleMouseDownRotate( event );
 
-				state = STATE.PAN;
+				state = STATE.ROTATE;
 
 				break;
 
@@ -833,23 +833,23 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		switch ( event.touches.length ) {
 
-			case 1:	// one-fingered touch: rotate
-
-				if ( scope.enableRotate === false ) return;
-
-				handleTouchStartRotate( event );
-
-				state = STATE.TOUCH_ROTATE;
-
-				break;
-
-			case 2:	// two-fingered touch: dolly-pan
+			case 1:	// one-fingered touch: dolly-pan
 
 				if ( scope.enableZoom === false && scope.enablePan === false ) return;
 
 				handleTouchStartDollyPan( event );
 
 				state = STATE.TOUCH_DOLLY_PAN;
+
+				break;
+
+			case 2:	// two-fingered touch: rotate
+
+				if ( scope.enableRotate === false ) return;
+
+				handleTouchStartRotate( event );
+
+				state = STATE.TOUCH_ROTATE;
 
 				break;
 
@@ -876,21 +876,21 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		switch ( event.touches.length ) {
 
-			case 1: // one-fingered touch: rotate
-
-				if ( scope.enableRotate === false ) return;
-				if ( state !== STATE.TOUCH_ROTATE ) return; // is this needed?
-
-				handleTouchMoveRotate( event );
-
-				break;
-
-			case 2: // two-fingered touch: dolly-pan
+			case 1: // one-fingered touch: dolly-pan
 
 				if ( scope.enableZoom === false && scope.enablePan === false ) return;
 				if ( state !== STATE.TOUCH_DOLLY_PAN ) return; // is this needed?
 
 				handleTouchMoveDollyPan( event );
+
+				break;
+
+			case 2: // two-fingered touch: rotate
+
+				if ( scope.enableRotate === false ) return;
+				if ( state !== STATE.TOUCH_ROTATE ) return; // is this needed?
+
+				handleTouchMoveRotate( event );
 
 				break;
 
