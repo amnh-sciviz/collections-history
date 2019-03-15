@@ -20,6 +20,26 @@
   </div>
 
   <script type="x-shader/x-vertex" id="vertexshader">
+    attribute float size;
+    varying vec3 vColor;
+    void main() {
+      vColor = color;
+      vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+      gl_PointSize = size * (300.0 / -mvPosition.z);
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  </script>
+
+  <script type="x-shader/x-fragment" id="fragmentshader">
+    uniform sampler2D texture;
+    varying vec3 vColor;
+    void main() {
+      gl_FragColor = vec4( vColor, 1.0 );
+      gl_FragColor = gl_FragColor * texture2D( texture, gl_PointCoord );
+    }
+  </script>
+
+  <script type="x-shader/x-vertex" id="vertexshader-sprite">
       attribute float size;
       attribute vec2 cellOffset;
       varying vec2 vCellOffset;
@@ -32,7 +52,7 @@
       }
     </script>
 
-    <script type="x-shader/x-fragment" id="fragmentshader">
+    <script type="x-shader/x-fragment" id="fragmentshader-sprite">
       uniform vec2 cellSize;
       uniform sampler2D texture;
       varying vec2 vCellOffset;

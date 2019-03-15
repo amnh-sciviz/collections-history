@@ -2,7 +2,16 @@
 
 function lerp(a, b, percent) {
   return (1.0*b - a) * percent + a;
-};
+}
+
+function loadData(url){
+  var deferred = $.Deferred();
+  $.getJSON(url, function(data) {
+    console.log("Loaded data.");
+    deferred.resolve(data);
+  });
+  return deferred.promise();
+}
 
 function norm(value, a, b) {
   var denom = (b - a);
@@ -17,6 +26,22 @@ function radiansBetween(x1, y1, x2, y2) {
   var deltaX = x2 - x1;
   var deltaY = y2 - y1;
   return Math.atan2(deltaY, deltaX);
+}
+
+function random3dPointInSphere(radius) {
+  var u = Math.random();
+  var v = Math.random();
+  var theta = u * 2.0 * Math.PI;
+  var phi = Math.acos(2.0 * v - 1.0);
+  var r = Math.cbrt(Math.random());
+  var sinTheta = Math.sin(theta);
+  var cosTheta = Math.cos(theta);
+  var sinPhi = Math.sin(phi);
+  var cosPhi = Math.cos(phi);
+  var x = r * sinPhi * cosTheta;
+  var y = r * sinPhi * sinTheta;
+  var z = r * cosPhi;
+  return [x*radius, y*radius, z*radius];
 }
 
 function roundToNearest(value, nearest) {
@@ -59,22 +84,33 @@ var App = (function() {
 
   var camera, scene, renderer, controls, opt, $container;
 
+  var collectionData, currentData, startYear, endYear, totalYears, totalDots;
+  var dotPositionsFrom, dotPositionsTo;
+  var dotGeometry, dotUniforms;
+
   var isSpriteTweening, spriteTweenDirection, spriteTweenStart;
   var spritePositionsFrom, spritePositionsTo;
   var spriteGeometry, spriteUniforms;
 
   function App(config) {
     var defaults = {
+      "dataUrl": "data/collections.json",
+
       // for displaying zoomed-in group
       "spritesheet": "img/specimen_spritesheet.jpg",
       "spriteW": 8,
       "spriteH": 128,
       "spriteGroupW": 32,
       "spriteGroupH": 32,
-      "spriteCellW": 8,
-      "spriteCellH": 8,
-      "spriteCellSize": 59.5,
+      "spriteCellW": 1,
+      "spriteCellH": 1,
+      "spriteCellSize": 8.0,
       "spriteTweenDuration": 2000,
+
+      // for displaying dots
+      "dotTexture": "img/particle.png",
+      "dotCellSize": 256,
+      "dotCloudRadius": 10000,
 
       "containerEl": "#canvas",
       "viewAngle": 45,
@@ -87,10 +123,62 @@ var App = (function() {
   }
 
   function init() {
-    loadScene();
-    loadSprites();
-    loadListeners();
-    render();
+    var dataPromise = loadData(opt.dataUrl);
+    $.when(dataPromise).done(function(results){
+      collectionData = results.slice(0);
+
+      loadScene();
+      loadSprites();
+      loadItems();
+      loadListeners();
+      render();
+    });
+
+  }
+
+  function loadItems(){
+    _.each(collectionData, function(d, i){
+      collectionData[i].dotCount = Math.round(d.cumulative/1000);
+    });
+    totalYears = collectionData.length;
+    currentData = collectionData[totalYears-1];
+    startYear = collectionData[0].year;
+    endYear = currentData.year;
+    totalDots = currentData.dotCount;
+
+    dotPositionsFrom = [];
+    dotPositionsTo = [];
+    var sizes = [];
+
+    for (var i=0; i<totalDots; i++) {
+      sizes.push(opt.dotCellSize);
+      if (i <= 0) dotPositionsFrom.push(-opt.spriteCellW/2, -opt.spriteCellW/2, 0);
+      else {
+        var xyz = random3dPointInSphere(opt.dotCloudRadius)
+        dotPositionsFrom.push(xyz[0], xyz[1], xyz[2]);
+      }
+    }
+
+    dotGeometry = new THREE.BufferGeometry();
+    dotGeometry.addAttribute('position', new THREE.Float32BufferAttribute(dotPositionsFrom.slice(0), 3).setDynamic(true));
+    dotGeometry.addAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+
+    dotUniforms = {
+      texture: { value: new THREE.TextureLoader().load(opt.dotTexture) },
+    };
+    dotUniforms.texture.value.flipY = false;
+
+    var shaderMaterial = new THREE.ShaderMaterial( {
+      uniforms: dotUniforms,
+      vertexShader: document.getElementById('vertexshader').textContent,
+      fragmentShader: document.getElementById('fragmentshader').textContent,
+      // blending: THREE.AdditiveBlending,
+      depthTest: true,
+      transparent: true,
+      vertexColors: true
+    });
+    var dots = new THREE.Points(dotGeometry, shaderMaterial);
+    scene.add(dots);
   }
 
   function loadListeners(){
@@ -122,7 +210,7 @@ var App = (function() {
 
     controls = new THREE.OrbitControls(camera, renderer.domElement);
 
-    scene.add(new THREE.AxesHelper(10000));
+    // scene.add(new THREE.AxesHelper(10000));
   }
 
   function loadSprites(){
@@ -163,8 +251,8 @@ var App = (function() {
 
     var shaderMaterial = new THREE.ShaderMaterial( {
       uniforms: spriteUniforms,
-      vertexShader: document.getElementById('vertexshader').textContent,
-      fragmentShader: document.getElementById('fragmentshader').textContent,
+      vertexShader: document.getElementById('vertexshader-sprite').textContent,
+      fragmentShader: document.getElementById('fragmentshader-sprite').textContent,
       blending: THREE.AdditiveBlending,
       depthTest: true,
       transparent: true,
