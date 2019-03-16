@@ -19,6 +19,8 @@
     <div id="text" class="text"></div>
   </div>
 
+  <div id="debug"></div>
+
   <script type="x-shader/x-vertex" id="vertexshader">
     attribute float size;
     varying vec3 vColor;
@@ -32,9 +34,10 @@
 
   <script type="x-shader/x-fragment" id="fragmentshader">
     uniform sampler2D texture;
+    uniform float groupAlpha;
     varying vec3 vColor;
     void main() {
-      gl_FragColor = vec4( vColor, 1.0 );
+      gl_FragColor = vec4( vColor, groupAlpha );
       gl_FragColor = gl_FragColor * texture2D( texture, gl_PointCoord );
     }
   </script>
@@ -43,7 +46,9 @@
       attribute float size;
       attribute vec2 cellOffset;
       varying vec2 vCellOffset;
+      varying vec3 vColor;
       void main() {
+        vColor = color;
         float margin = 0.2;
         vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
         vCellOffset = cellOffset;
@@ -53,14 +58,17 @@
     </script>
 
     <script type="x-shader/x-fragment" id="fragmentshader-sprite">
+      uniform float groupAlpha;
       uniform vec2 cellSize;
       uniform sampler2D texture;
       varying vec2 vCellOffset;
+      varying vec3 vColor;
       void main() {
         float x = gl_PointCoord.x*cellSize.x+cellSize.x*vCellOffset.x;
         float y = gl_PointCoord.y*cellSize.y+cellSize.y*vCellOffset.y;
         vec2 scaledPoint = vec2(x, y);
-        gl_FragColor = texture2D(texture, scaledPoint);
+        gl_FragColor = vec4( vColor, groupAlpha );
+        gl_FragColor = gl_FragColor * texture2D(texture, scaledPoint);
       }
     </script>
 

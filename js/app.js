@@ -165,6 +165,7 @@ var App = (function() {
 
     dotUniforms = {
       texture: { value: new THREE.TextureLoader().load(opt.dotTexture) },
+      groupAlpha: { value: 0.0, type: "f" }
     };
     dotUniforms.texture.value.flipY = false;
 
@@ -205,7 +206,8 @@ var App = (function() {
     camera.lookAt(scene.position);
     renderer = new THREE.WebGLRenderer({ antialias:true });
     renderer.setSize(width, height);
-    renderer.setPixelRatio( window.devicePixelRatio );
+    // renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setPixelRatio( 2 );
     $container.append(renderer.domElement);
 
     controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -245,7 +247,8 @@ var App = (function() {
 
     spriteUniforms = {
       texture: { value: new THREE.TextureLoader().load(opt.spritesheet) },
-      cellSize: { value: new THREE.Vector2(1.0/opt.spriteW, 1.0/opt.spriteH) }
+      cellSize: { value: new THREE.Vector2(1.0/opt.spriteW, 1.0/opt.spriteH) },
+      groupAlpha: { value: 1.0, type: "f" }
     };
     spriteUniforms.texture.value.flipY = false;
 
@@ -304,6 +307,10 @@ var App = (function() {
     for (var i=0; i<vertices.length; i++) {
       vertices[i] = lerp(spritePositionsFrom[i], spritePositionsTo[i], nprogress);
     }
+
+    // adjust alpha
+    spriteUniforms.groupAlpha.value = 1.0-nprogress;
+    dotUniforms.groupAlpha.value = nprogress;
     spriteGeometry.attributes.position.needsUpdate = true;
   }
 
