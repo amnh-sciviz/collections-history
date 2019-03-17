@@ -520,6 +520,9 @@ THREE.OrbitControls = function ( object, domElement ) {
 	function handleMouseWheel( event ) {
 
 		// console.log( 'handleMouseWheel' );
+		if (event.detail) {
+			event = event.detail;
+		}
 
 		if ( event.deltaY < 0 ) {
 
@@ -928,6 +931,8 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	scope.domElement.addEventListener( 'mousedown', onMouseDown, false );
 	scope.domElement.addEventListener( 'wheel', onMouseWheel, false );
+
+	scope.domElement.addEventListener( "zoom", onMouseWheel, false);
 
 	scope.domElement.addEventListener( 'touchstart', onTouchStart, false );
 	scope.domElement.addEventListener( 'touchend', onTouchEnd, false );

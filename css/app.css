@@ -14,3 +14,16 @@
   left: -5%;
   top: -5%;
 }
+
+.debug {
+  display: none;
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  background: black;
+  padding: 1rem;
+  color: white;
+}
+.debug.active {
+  display: block;
+}

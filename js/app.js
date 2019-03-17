@@ -92,6 +92,10 @@ var App = (function() {
   var spritePositionsFrom, spritePositionsTo;
   var spriteGeometry, spriteUniforms;
 
+  var step, zoomStartZ, zoomEndZ, isZooming, zoomStart, zoomEnd;
+
+  var $debug, $cameraPos;
+
   function App(config) {
     var defaults = {
       "dataUrl": "data/collections.json",
@@ -106,6 +110,7 @@ var App = (function() {
       "spriteCellH": 1,
       "spriteCellSize": 8.0,
       "spriteTweenDuration": 2000,
+      "spriteTweenZThreshold": 54,
 
       // for displaying dots
       "dotTexture": "img/particle.png",
@@ -116,7 +121,12 @@ var App = (function() {
       "viewAngle": 45,
       "cameraNear": 1,
       "cameraFar": 100000,
-      "cameraPos": [0,0,100]
+      "cameraPos": [0,0,5.6],
+
+      "zoomDuration": 5000,
+      "zoomStep": 25, // check zoom every x ms
+
+      "debug": true
     };
     opt = _.extend({}, defaults, config);
     init();
@@ -124,9 +134,16 @@ var App = (function() {
 
   function init() {
     var dataPromise = loadData(opt.dataUrl);
+
+    if (opt.debug) {
+      loadDebug();
+    }
+
+    spriteTweenDirection = 1;
+    step = 0;
+
     $.when(dataPromise).done(function(results){
       collectionData = results.slice(0);
-
       loadScene();
       loadSprites();
       loadItems();
@@ -134,6 +151,29 @@ var App = (function() {
       render();
     });
 
+  }
+
+  function go(direction){
+    step += direction
+    if (step < 1) step = 1;
+
+    switch(step) {
+      case 1:
+        zoomTo(56, opt.zoomDuration);
+        break;
+      case 2:
+        zoomTo(31258, opt.zoomDuration);
+        break;
+        break;
+      default:
+        break;
+    }
+  }
+
+  function loadDebug(){
+    $debug = $("#debug");
+    $cameraPos = $("#camera-position");
+    $debug.addClass("active");
   }
 
   function loadItems(){
@@ -186,11 +226,8 @@ var App = (function() {
     $(window).on('resize', onResize);
 
     $container.on('click', function(e){
-      if (!isSpriteTweening) {
-        isSpriteTweening = true;
-        spriteTweenStart = new Date().getTime();
-        spriteTweenDirection = spriteTweenDirection===undefined ? 1 : spriteTweenDirection;
-      }
+      if (e.shiftKey) go(-1);
+      else go(1);
     });
   }
 
@@ -274,12 +311,34 @@ var App = (function() {
     camera.updateProjectionMatrix();
   }
 
+  function queueTweenSprites() {
+    if (!isSpriteTweening) {
+      isSpriteTweening = true;
+      spriteTweenStart = new Date().getTime();
+    }
+  }
+
+  function renderDebug(){
+    var pos = camera.position
+    $cameraPos.text(pos.x + ", " + pos.y + ", " + pos.z);
+  }
+
   function render(){
     var now = new Date().getTime();
 
     if (isSpriteTweening) {
       tweenSprites(spriteTweenDirection, spriteTweenStart, now);
+    } else if (spriteTweenDirection > 0 && camera.position.z > opt.spriteTweenZThreshold) {
+      queueTweenSprites();
+    } else if (spriteTweenDirection < 0 && camera.position.z < opt.spriteTweenZThreshold) {
+      queueTweenSprites();
     }
+
+    if (isZooming) {
+      zoom(now);
+    }
+
+    if (opt.debug) renderDebug();
 
     renderer.render(scene, camera);
     controls.update();
@@ -312,6 +371,30 @@ var App = (function() {
     spriteUniforms.groupAlpha.value = 1.0-nprogress;
     dotUniforms.groupAlpha.value = nprogress;
     spriteGeometry.attributes.position.needsUpdate = true;
+  }
+
+  function zoom(t){
+    var nprogress = norm(t, zoomStart, zoomEnd);
+    if (nprogress >= 1) {
+      isZooming = false;
+      nprogress = 1;
+    }
+
+    nprogress = EasingFunctions.easeInOutQuart(nprogress);
+    var newZ = lerp(zoomStartZ, zoomEndZ, nprogress);
+
+    camera.position.z = newZ;
+
+  }
+
+  function zoomTo(z, duration){
+    if (isZooming) return false;
+
+    isZooming = true;
+    zoomStartZ = camera.position.z;
+    zoomEndZ = z;
+    zoomStart = new Date().getTime();
+    zoomEnd = zoomStart + duration;
   }
 
   return App;
