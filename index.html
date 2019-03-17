@@ -37,9 +37,12 @@
   <script type="x-shader/x-fragment" id="fragmentshader">
     uniform sampler2D texture;
     uniform float groupAlpha;
+    uniform float groupColorTween;
     varying vec3 vColor;
     void main() {
-      gl_FragColor = vec4( vColor, groupAlpha );
+      vec3 baseColor = vec3(168, 174, 183);
+      vec3 blendedColor = vColor * groupColorTween + baseColor * (1.0-groupColorTween);
+      gl_FragColor = vec4( blendedColor, groupAlpha );
       gl_FragColor = gl_FragColor * texture2D( texture, gl_PointCoord );
     }
   </script>

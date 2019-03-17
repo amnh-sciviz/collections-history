@@ -93,6 +93,7 @@ var App = (function() {
   var spriteGeometry, spriteUniforms;
 
   var step, zoomStartZ, zoomEndZ, isZooming, zoomStart, zoomEnd;
+  var isColorShifting, colorShiftStart, colorShiftEnd;
   var isRotating, rotationStart, rotationEnd, rotatePositionStart, rotateRadiansFrom, rotateRadiansTo;
 
   var $debug, $cameraPos;
@@ -125,8 +126,11 @@ var App = (function() {
       "cameraPos": [0,0,5.6],
 
       "zoomDuration": 5000,
+      "colorShiftDuration": 5000,
       "rotationDuration": 5000,
       "rotationDegrees": 90,
+
+      "colors": ["#74a4f2", "#bb73f1", "#f072e2", "#f75151", "#f7a350", "#57d668"],
 
       "debug": true
     };
@@ -167,6 +171,9 @@ var App = (function() {
         queueZoom(31258, opt.zoomDuration);
         break;
       case 3:
+        queueDotColors(direction, opt.colorShiftDuration);
+        break
+      case 4:
         queueRotation(direction, opt.rotationDuration);
         break;
       default:
@@ -189,10 +196,19 @@ var App = (function() {
     startYear = collectionData[0].year;
     endYear = currentData.year;
     totalDots = currentData.dotCount;
+    var currentBreakdown = _.map(currentData.breakdown, function(v){ return v/1000; });
 
     dotPositionsFrom = [];
     dotPositionsTo = [];
     var sizes = [];
+    var dotColors = [];
+
+    var colors = _.map(opt.colors, function(hexString){
+      return new THREE.Color(hexString);
+    });
+    var colorCount = colors.length;
+    var colorIndex = 0;
+    var currentColorThreshold = currentBreakdown[colorIndex];
 
     for (var i=0; i<totalDots; i++) {
       sizes.push(opt.dotCellSize);
@@ -201,15 +217,24 @@ var App = (function() {
         var xyz = random3dPointInSphere(opt.dotCloudRadius)
         dotPositionsFrom.push(xyz[0], xyz[1], xyz[2]);
       }
+      var dotColor = colors[colorIndex];
+      dotColors.push(dotColor.r, dotColor.g, dotColor.b);
+      if (i >= currentColorThreshold) {
+        colorIndex++;
+        colorIndex = Math.min(colorIndex, colorCount-1, currentBreakdown.length-1);
+        currentColorThreshold += currentBreakdown[colorIndex];
+      }
     }
 
     dotGeometry = new THREE.BufferGeometry();
     dotGeometry.addAttribute('position', new THREE.Float32BufferAttribute(dotPositionsFrom.slice(0), 3).setDynamic(true));
     dotGeometry.addAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+    dotGeometry.addAttribute('color', new THREE.Float32BufferAttribute(dotColors, 3));
 
     dotUniforms = {
       texture: { value: new THREE.TextureLoader().load(opt.dotTexture) },
-      groupAlpha: { value: 0.0, type: "f" }
+      groupAlpha: { value: 0.0, type: "f" },
+      groupColorTween: { value: 0.0, type: "f" }
     };
     dotUniforms.texture.value.flipY = false;
 
@@ -315,6 +340,14 @@ var App = (function() {
     camera.updateProjectionMatrix();
   }
 
+  function queueDotColors(direction, duration) {
+    if (isColorShifting) return false;
+
+    isColorShifting = true;
+    colorShiftStart = new Date().getTime();
+    colorShiftEnd = colorShiftStart + duration;
+  }
+
   function queueRotation(direction, duration){
     if (isRotating) return false;
 
@@ -367,6 +400,10 @@ var App = (function() {
       rotateCamera(now);
     }
 
+    if (isColorShifting) {
+      shiftDotColor(now);
+    }
+
     if (opt.debug) renderDebug();
 
     renderer.render(scene, camera);
@@ -390,6 +427,16 @@ var App = (function() {
     camera.position.x = x * Math.cos(radians) + z * Math.sin(radians);
     camera.position.z = z * Math.cos(radians) - x * Math.sin(radians);
     camera.lookAt(scene.position);
+  }
+
+  function shiftDotColor(t){
+    var nprogress = norm(t, colorShiftStart, colorShiftEnd);
+    if (nprogress >= 1) {
+      isColorShifting = false;
+      nprogress = 1;
+    }
+    nprogress = EasingFunctions.easeInOutCubic(nprogress);
+    dotUniforms.groupColorTween.value = nprogress;
   }
 
   function tweenSprites(direction, startTime, currentTime) {
