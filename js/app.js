@@ -93,6 +93,7 @@ var App = (function() {
   var spriteGeometry, spriteUniforms;
 
   var step, zoomStartZ, zoomEndZ, isZooming, zoomStart, zoomEnd;
+  var isRotating, rotationStart, rotationEnd, rotatePositionStart, rotateRadiansFrom, rotateRadiansTo;
 
   var $debug, $cameraPos;
 
@@ -124,7 +125,8 @@ var App = (function() {
       "cameraPos": [0,0,5.6],
 
       "zoomDuration": 5000,
-      "zoomStep": 25, // check zoom every x ms
+      "rotationDuration": 5000,
+      "rotationDegrees": 90,
 
       "debug": true
     };
@@ -159,11 +161,13 @@ var App = (function() {
 
     switch(step) {
       case 1:
-        zoomTo(56, opt.zoomDuration);
+        queueZoom(56, opt.zoomDuration);
         break;
       case 2:
-        zoomTo(31258, opt.zoomDuration);
+        queueZoom(31258, opt.zoomDuration);
         break;
+      case 3:
+        queueRotation(direction, opt.rotationDuration);
         break;
       default:
         break;
@@ -311,11 +315,32 @@ var App = (function() {
     camera.updateProjectionMatrix();
   }
 
+  function queueRotation(direction, duration){
+    if (isRotating) return false;
+
+    isRotating = true;
+    rotationStart = new Date().getTime();
+    rotationEnd = rotationStart + duration;
+    rotatePositionStart = camera.position.clone();
+    rotateRadiansFrom = 0;
+    rotateRadiansTo = (-direction) * opt.rotationDegrees * (Math.PI / 180.0);
+  }
+
   function queueTweenSprites() {
     if (!isSpriteTweening) {
       isSpriteTweening = true;
       spriteTweenStart = new Date().getTime();
     }
+  }
+
+  function queueZoom(z, duration){
+    if (isZooming) return false;
+
+    isZooming = true;
+    zoomStartZ = camera.position.z;
+    zoomEndZ = z;
+    zoomStart = new Date().getTime();
+    zoomEnd = zoomStart + duration;
   }
 
   function renderDebug(){
@@ -326,16 +351,20 @@ var App = (function() {
   function render(){
     var now = new Date().getTime();
 
-    if (isSpriteTweening) {
-      tweenSprites(spriteTweenDirection, spriteTweenStart, now);
-    } else if (spriteTweenDirection > 0 && camera.position.z > opt.spriteTweenZThreshold) {
-      queueTweenSprites();
-    } else if (spriteTweenDirection < 0 && camera.position.z < opt.spriteTweenZThreshold) {
-      queueTweenSprites();
+    if (step <= 2) {
+      if (isSpriteTweening) {
+        tweenSprites(spriteTweenDirection, spriteTweenStart, now);
+      } else if (spriteTweenDirection > 0 && camera.position.z > opt.spriteTweenZThreshold) {
+        queueTweenSprites();
+      } else if (spriteTweenDirection < 0 && camera.position.z < opt.spriteTweenZThreshold) {
+        queueTweenSprites();
+      }
     }
 
     if (isZooming) {
       zoom(now);
+    } else if (isRotating) {
+      rotateCamera(now);
     }
 
     if (opt.debug) renderDebug();
@@ -343,6 +372,24 @@ var App = (function() {
     renderer.render(scene, camera);
     controls.update();
     requestAnimationFrame(render);
+  }
+
+  function rotateCamera(t){
+    var nprogress = norm(t, rotationStart, rotationEnd);
+    if (nprogress >= 1) {
+      isRotating = false;
+      nprogress = 1;
+    }
+
+    nprogress = EasingFunctions.easeInOutCubic(nprogress);
+    var radians = lerp(rotateRadiansFrom, rotateRadiansTo, nprogress);
+
+    var x = rotatePositionStart.x;
+    var z = rotatePositionStart.z;
+
+    camera.position.x = x * Math.cos(radians) + z * Math.sin(radians);
+    camera.position.z = z * Math.cos(radians) - x * Math.sin(radians);
+    camera.lookAt(scene.position);
   }
 
   function tweenSprites(direction, startTime, currentTime) {
@@ -385,16 +432,6 @@ var App = (function() {
 
     camera.position.z = newZ;
 
-  }
-
-  function zoomTo(z, duration){
-    if (isZooming) return false;
-
-    isZooming = true;
-    zoomStartZ = camera.position.z;
-    zoomEndZ = z;
-    zoomStart = new Date().getTime();
-    zoomEnd = zoomStart + duration;
   }
 
   return App;
