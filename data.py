@@ -87,6 +87,15 @@ for i, d in enumerate(annualData):
             annualData[i-1]["cumulative"] += rdelta
             annualData[i]["cumulative"] -= rdelta
 
+# ensure each year increases
+for i, d in enumerate(annualData):
+    if i > 0:
+        curr = annualData[i]["cumulative"]
+        prev = annualData[i-1]["cumulative"]
+        if prev > curr:
+            annualData[i-1]["cumulative"] = curr
+            annualData[i]["cumulative"] = prev
+
 nbreakdown = [1.0*d/model["cumulative"] for d in model["breakdown"]]
 
 # add breakdowns and added
@@ -106,6 +115,7 @@ for i, d in enumerate(annualData):
 # xs = np.arange(len(ys))
 # plt.scatter(xs, ys, s=4)
 # plt.show()
+# sys.exit()
 
 with open(a.OUTPUT_FILE, 'w') as f:
     json.dump(annualData, f)
