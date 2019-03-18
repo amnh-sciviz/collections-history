@@ -48,6 +48,35 @@ function roundToNearest(value, nearest) {
   return Math.round(value / nearest) * nearest;
 }
 
+function spiral(w) {
+  var x = 0,
+    y = 0,
+    delta = [0, -1],
+    // spiral width
+    width = w,
+    // spiral height
+    height = w,
+    points = [],
+    i;
+
+
+  for (i = Math.pow(Math.max(width, height), 2); i>0; i--) {
+    if ((-width/2 < x && x <= width/2) && (-height/2 < y && y <= height/2)) {
+      points.push([x, y])
+    }
+
+    if (x === y || (x < 0 && x === -y) || (x > 0 && x === 1-y)){
+      // change direction
+      delta = [-delta[1], delta[0]]
+    }
+
+    x += delta[0];
+    y += delta[1];
+  }
+
+  return points;
+}
+
 function toRadial(x, y, cellW, cellH) {
   if (x===0 && y===0) return [0, 0];
 
@@ -85,7 +114,7 @@ var App = (function() {
   var camera, scene, renderer, controls, opt, $container;
 
   var collectionData, currentData, startYear, endYear, totalYears, totalDots;
-  var dotPositionsFrom, dotPositionsTo;
+  var dotPositionsFrom, dotPositionsBreakdown, dotPositionsGraph;
   var dotGeometry, dotUniforms;
 
   var isSpriteTweening, spriteTweenDirection, spriteTweenStart;
@@ -94,7 +123,9 @@ var App = (function() {
 
   var step, zoomStartZ, zoomEndZ, isZooming, zoomStart, zoomEnd;
   var isColorShifting, colorShiftStart, colorShiftEnd;
+  var isBreakingdown, breakdownStart, breakdownEnd;
   var isRotating, rotationStart, rotationEnd, rotatePositionStart, rotateRadiansFrom, rotateRadiansTo;
+  var isGraphAnimating, graphStart, graphTransitionEnd, graphEnd;
 
   var $debug, $cameraPos;
 
@@ -118,19 +149,26 @@ var App = (function() {
       "dotTexture": "img/particle.png",
       "dotCellSize": 256,
       "dotCloudRadius": 10000,
+      "colors": ["#74a4f2", "#bb73f1", "#f072e2", "#f75151", "#f7a350", "#57d668"],
 
+      // camera
       "containerEl": "#canvas",
       "viewAngle": 45,
       "cameraNear": 1,
       "cameraFar": 100000,
       "cameraPos": [0,0,5.6],
 
+      // tweening
       "zoomDuration": 5000,
-      "colorShiftDuration": 5000,
+      "colorShiftDuration": 3000,
       "rotationDuration": 5000,
       "rotationDegrees": 90,
+      "breakdownDuration": 4000,
 
-      "colors": ["#74a4f2", "#bb73f1", "#f072e2", "#f75151", "#f7a350", "#57d668"],
+      // graph
+      "graphDuration": 1000,
+      "graphTransition": 4000,
+      "graphStackW": 4,
 
       "debug": true
     };
@@ -171,10 +209,13 @@ var App = (function() {
         queueZoom(31258, opt.zoomDuration);
         break;
       case 3:
+        queueRotation(direction, opt.rotationDuration);
         queueDotColors(direction, opt.colorShiftDuration);
+        queueBreakdown(direction, opt.breakdownDuration);
         break
       case 4:
-        queueRotation(direction, opt.rotationDuration);
+        queueRotation(-direction, opt.rotationDuration);
+        queueGraph(direction, opt.graphDuration, opt.graphTransition);
         break;
       default:
         break;
@@ -190,6 +231,8 @@ var App = (function() {
   function loadItems(){
     _.each(collectionData, function(d, i){
       collectionData[i].dotCount = Math.round(d.cumulative/1000);
+      collectionData[i].yOffset = -opt.dotCloudRadius;
+      collectionData[i].stackIndex = 0;
     });
     totalYears = collectionData.length;
     currentData = collectionData[totalYears-1];
@@ -199,10 +242,8 @@ var App = (function() {
     var currentBreakdown = _.map(currentData.breakdown, function(v){ return v/1000; });
 
     dotPositionsFrom = [];
-    dotPositionsTo = [];
     var sizes = [];
     var dotColors = [];
-
     var colors = _.map(opt.colors, function(hexString){
       return new THREE.Color(hexString);
     });
@@ -210,6 +251,8 @@ var App = (function() {
     var colorIndex = 0;
     var currentColorThreshold = currentBreakdown[colorIndex];
 
+    var colorOffsets = [[0, currentColorThreshold]];
+    // determine starting positions
     for (var i=0; i<totalDots; i++) {
       sizes.push(opt.dotCellSize);
       if (i <= 0) dotPositionsFrom.push(-opt.spriteCellW/2, -opt.spriteCellW/2, 0);
@@ -222,9 +265,88 @@ var App = (function() {
       if (i >= currentColorThreshold) {
         colorIndex++;
         colorIndex = Math.min(colorIndex, colorCount-1, currentBreakdown.length-1);
+        var colorOffset = [currentColorThreshold];
         currentColorThreshold += currentBreakdown[colorIndex];
+        colorOffset.push(currentColorThreshold);
+        colorOffsets.push(colorOffset);
       }
     }
+
+    // determine category positions
+    dotPositionsBreakdown = [];
+    var categoryCount = currentBreakdown.length;
+    var count = 0;
+    var categoryDistance = opt.dotCloudRadius;
+    var categoriesX = -opt.dotCloudRadius*1.5;
+    var offsetX = categoriesX;
+    var marginX = opt.dotCloudRadius * 0.1;
+    for (var i=0; i<categoryCount; i++) {
+      var bd = parseInt(currentBreakdown[i]);
+      if (i >= (categoryCount-1)) bd = totalDots-count;
+      var nCategorySize = 1.0 * bd / totalDots;
+      var categoryRadius = categoryDistance * nCategorySize;
+      offsetX += categoryRadius;
+      for (var j=0; j<bd; j++) {
+        var xyz = random3dPointInSphere(categoryRadius);
+        xyz[0] += offsetX;
+        dotPositionsBreakdown.push(xyz[1], xyz[2], xyz[0]);
+        count++;
+      }
+      offsetX += categoryRadius + marginX;
+    }
+
+    // determine graph positions
+    dotPositionsGraph = [];
+    count = 0;
+
+    var graphW = parseInt(opt.dotCloudRadius * 3);
+    var graphX = -parseInt(graphW/2);
+    var margin = parseInt(opt.dotCloudRadius * 0.01);
+    var yStep = parseInt(opt.dotCellSize*1.2);
+    var barW = parseInt(graphW / totalYears - margin);
+    var spiralPoints = spiral(opt.graphStackW);
+    var spiralCount = spiralPoints.length;
+    var yOffsets = _.times(totalYears, function(n){ return -opt.dotCloudRadius*0.75; });
+    var stackIndices = _.times(totalYears, function(n){ return 0; });
+    for (var i=0; i<categoryCount; i++) {
+
+      for (var j=totalYears-1; j>=0; j--) {
+        var yd = collectionData[j];
+        var added = Math.round(yd.added/1000.0);
+        // console.log(added);
+        var yOffset = yOffsets[j];
+        var stackIndex = stackIndices[j];
+
+        var barX = parseInt(graphX + (barW + margin) * j);
+        var breakdownSum = _.reduce(yd.breakdown, function(memo, num){ return memo + num; }, 0);
+        var nBreakdown = _.map(yd.breakdown, function(v){ return 1.0 * v / breakdownSum; });
+
+        var bpercent = nBreakdown[i];
+        var bcount = Math.round(bpercent * added);
+
+        for (var k=0; k<bcount; k++) {
+          if (count >= totalDots) break;
+          var xz = spiralPoints[stackIndex];
+
+          dotPositionsGraph.push(barX+xz[0]*yStep, yOffset, xz[1]*yStep);
+          count++;
+
+          stackIndex++;
+          if (stackIndex >= spiralCount) {
+            stackIndex = 0;
+            yOffset += yStep;
+          }
+        } // end k
+
+        stackIndices[j] = stackIndex;
+        yOffsets[j] = yOffset;
+        // if (i===0) console.log(yOffset);
+
+      } // end j
+
+    } // end i
+
+    // console.log(dotPositionsGraph)
 
     dotGeometry = new THREE.BufferGeometry();
     dotGeometry.addAttribute('position', new THREE.Float32BufferAttribute(dotPositionsFrom.slice(0), 3).setDynamic(true));
@@ -340,12 +462,29 @@ var App = (function() {
     camera.updateProjectionMatrix();
   }
 
+  function queueBreakdown(direction, duration) {
+    if (isBreakingdown) return false;
+
+    isBreakingdown = true;
+    breakdownStart = new Date().getTime();
+    breakdownEnd = breakdownStart + duration;
+  }
+
   function queueDotColors(direction, duration) {
     if (isColorShifting) return false;
 
     isColorShifting = true;
     colorShiftStart = new Date().getTime();
     colorShiftEnd = colorShiftStart + duration;
+  }
+
+  function queueGraph(direction, duration, transition) {
+    if (isGraphAnimating) return false;
+
+    isGraphAnimating = true;
+    graphStart = new Date().getTime();
+    graphTransitionEnd = graphStart + transition;
+    graphEnd = graphTransitionEnd + duration;
   }
 
   function queueRotation(direction, duration){
@@ -395,13 +534,19 @@ var App = (function() {
     }
 
     if (isZooming) {
-      zoom(now);
+      tweenZoom(now);
     } else if (isRotating) {
-      rotateCamera(now);
+      tweenRotate(now);
     }
 
     if (isColorShifting) {
-      shiftDotColor(now);
+      tweenDotColor(now);
+    }
+
+    if (isBreakingdown) {
+      tweenBreakdown(now);
+    } else if (isGraphAnimating) {
+      tweenGraph(now);
     }
 
     if (opt.debug) renderDebug();
@@ -411,7 +556,59 @@ var App = (function() {
     requestAnimationFrame(render);
   }
 
-  function rotateCamera(t){
+  function tweenBreakdown(t){
+    var nprogress = norm(t, breakdownStart, breakdownEnd);
+
+    // end states
+    if (nprogress >= 1) {
+      nprogress = 1;
+      isBreakingdown = false;
+    }
+
+    // ease between grid and radial positions
+    nprogress = EasingFunctions.easeInOutCubic(nprogress);
+    var vertices = dotGeometry.attributes.position.array;
+    for (var i=0; i<vertices.length; i++) {
+      vertices[i] = lerp(dotPositionsFrom[i], dotPositionsBreakdown[i], nprogress);
+    }
+
+    dotGeometry.attributes.position.needsUpdate = true;
+  }
+
+  function tweenDotColor(t){
+    var nprogress = norm(t, colorShiftStart, colorShiftEnd);
+    if (nprogress >= 1) {
+      isColorShifting = false;
+      nprogress = 1;
+    }
+    nprogress = EasingFunctions.easeInOutCubic(nprogress);
+    dotUniforms.groupColorTween.value = nprogress;
+  }
+
+  function tweenGraph(t){
+    var nprogress = norm(t, graphStart, graphEnd);
+    if (nprogress >= 1) isGraphAnimating = false;
+
+    var ntransition = norm(t, graphStart, graphTransitionEnd);
+
+    var vertices = dotGeometry.attributes.position.array;
+    var durRatio = 1.0 * opt.graphDuration / (opt.graphDuration+opt.graphTransition);
+    for (var i=0; i<totalDots; i++) {
+      var dstart = 1.0 * i / (totalDots-1);
+      dstart *= (1.0-durRatio)
+      var dend = dstart + durRatio;
+      var dprogress = norm(nprogress, dstart, dend);
+      if (dprogress >= 0 && dprogress <= 1)
+      for (var j=0; j<3; j++) {
+        var vi = i*3+j;
+        vertices[vi] = lerp(dotPositionsBreakdown[vi], dotPositionsGraph[vi], dprogress);
+      }
+    }
+
+    dotGeometry.attributes.position.needsUpdate = true;
+  }
+
+  function tweenRotate(t){
     var nprogress = norm(t, rotationStart, rotationEnd);
     if (nprogress >= 1) {
       isRotating = false;
@@ -427,16 +624,6 @@ var App = (function() {
     camera.position.x = x * Math.cos(radians) + z * Math.sin(radians);
     camera.position.z = z * Math.cos(radians) - x * Math.sin(radians);
     camera.lookAt(scene.position);
-  }
-
-  function shiftDotColor(t){
-    var nprogress = norm(t, colorShiftStart, colorShiftEnd);
-    if (nprogress >= 1) {
-      isColorShifting = false;
-      nprogress = 1;
-    }
-    nprogress = EasingFunctions.easeInOutCubic(nprogress);
-    dotUniforms.groupColorTween.value = nprogress;
   }
 
   function tweenSprites(direction, startTime, currentTime) {
@@ -467,7 +654,7 @@ var App = (function() {
     spriteGeometry.attributes.position.needsUpdate = true;
   }
 
-  function zoom(t){
+  function tweenZoom(t){
     var nprogress = norm(t, zoomStart, zoomEnd);
     if (nprogress >= 1) {
       isZooming = false;
