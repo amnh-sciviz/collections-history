@@ -60,14 +60,20 @@ def fillImage(img, w, h):
     return cropped
 
 print("Building spritesheet...")
+mask = Image.open("img/particle_mask.png")
+mask = mask.convert("RGBA")
+mask = mask.resize((tileW, tileH), resample=Image.LANCZOS)
 for row in range(gridH):
     for col in range(gridW):
         # open file
         i = row * gridW + col
         filename = filenames[i]
         im = Image.open(filename)
+        im = im.convert("RGBA")
         # resize image
         im = fillImage(im, tileW, tileH)
+        # add circular mask
+        im = Image.alpha_composite(im, mask)
         # paste image
         x = col * tileW
         y = row * tileH
