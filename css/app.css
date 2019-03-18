@@ -1,5 +1,12 @@
+body {
+  background: #222;
+  font-family: sans-serif;
+}
+
 .app,
-.canvas {
+.canvas,
+.text,
+.slide {
   position: absolute;
   width: 100%;
   height: 100%;
@@ -8,11 +15,90 @@
   left: 0;
   overflow: hidden;
 }
+.app {
+  width: 100vw;
+  height: 56.25vw;  /* 1920 x 1080 ratio */
+  top: 50%;
+  left: 0;
+  margin-top: -28.125vw;
+}
 .canvas {
   width: 110%;
   height: 110%;
   left: -5%;
   top: -5%;
+}
+
+.text,
+.slide {
+  background: transparent;
+}
+.slide {
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+  color: white;
+  font-size: 1.5vw;
+}
+.slide.active {
+  opacity: 1;
+}
+
+.division {
+  font-weight: bold;
+  display: block;
+  position: absolute;
+  text-align: center;
+}
+#division1 {
+  color: #74a4f2;
+  left: 15%;
+  top: 10%;
+}
+#division2 {
+  left: 46.5%;
+  color: #bb73f1;
+  top: 34%;
+  font-size: 1.3vw;
+}
+#division3 {
+  left: 60%;
+  color: #f072e2;
+  top: 36%;
+  font-size: 1.3vw;
+  width: 10vw;
+}
+#division4 {
+  left: 71.5%;
+  color: #f75151;
+  top: 40%;
+  font-size: 1.2vw;
+}
+#division5 {
+  left: 79%;
+  color: #f7a350;
+  top: 42%;
+  font-size: 1.2vw;
+  width: 8vw;
+}
+#division6 {
+  left: 87%;
+  color: #57d668;
+  top: 43%;
+  font-size: 1.2vw;
+  width: 7vw;
+}
+
+#years {
+  width: 80vw;
+  height: 10vw;
+  left: 10vw;
+  bottom: -2vw;
+  text-align: center;
+  top: auto;
+}
+.year {
+  display: inline-block;
+  width: 12vw;
 }
 
 .debug {
@@ -26,4 +112,16 @@
 }
 .debug.active {
   display: block;
+}
+
+@media (min-aspect-ratio: 1920/1080) {
+  .app {
+    width: 177.777777778vh;
+    height: 100vh;
+    top: 0;
+    left: 50%;
+    margin-top: 0;
+    margin-left: -88.888888889vh;
+  }
+
 }

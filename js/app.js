@@ -141,13 +141,13 @@ var App = (function() {
       "spriteGroupH": 32,
       "spriteCellW": 1,
       "spriteCellH": 1,
-      "spriteCellSize": 8.0,
+      // "spriteCellSize": 8.0,
       "spriteTweenDuration": 2000,
       "spriteTweenZThreshold": 54,
 
       // for displaying dots
       "dotTexture": "img/particle.png",
-      "dotCellSize": 256,
+      // "dotCellSize": 256,
       "dotCloudRadius": 10000,
       "colors": ["#74a4f2", "#bb73f1", "#f072e2", "#f75151", "#f7a350", "#57d668"],
 
@@ -212,10 +212,22 @@ var App = (function() {
         queueRotation(direction, opt.rotationDuration);
         queueDotColors(direction, opt.colorShiftDuration);
         queueBreakdown(direction, opt.breakdownDuration);
-        break
+        break;
       case 4:
+        $("#divisions").addClass("active");
+        break;
+      case 5:
+        $("#divisions").removeClass("active");
+        break;
+      case 6:
         queueRotation(-direction, opt.rotationDuration);
         queueGraph(direction, opt.graphDuration, opt.graphTransition);
+        break;
+      case 7:
+        $("#years").addClass("active");
+        break;
+      case 8:
+        $("#years").removeClass("active");
         break;
       default:
         break;
@@ -252,9 +264,10 @@ var App = (function() {
     var currentColorThreshold = currentBreakdown[colorIndex];
 
     var colorOffsets = [[0, currentColorThreshold]];
+    var dotCellSize = parseInt($(window).width() / 5.54);
     // determine starting positions
     for (var i=0; i<totalDots; i++) {
-      sizes.push(opt.dotCellSize);
+      sizes.push(dotCellSize);
       if (i <= 0) dotPositionsFrom.push(-opt.spriteCellW/2, -opt.spriteCellW/2, 0);
       else {
         var xyz = random3dPointInSphere(opt.dotCloudRadius)
@@ -277,9 +290,9 @@ var App = (function() {
     var categoryCount = currentBreakdown.length;
     var count = 0;
     var categoryDistance = opt.dotCloudRadius;
-    var categoriesX = -opt.dotCloudRadius*1.5;
+    var categoriesX = -opt.dotCloudRadius*1.8;
     var offsetX = categoriesX;
-    var marginX = opt.dotCloudRadius * 0.1;
+    var marginX = opt.dotCloudRadius * 0.3;
     for (var i=0; i<categoryCount; i++) {
       var bd = parseInt(currentBreakdown[i]);
       if (i >= (categoryCount-1)) bd = totalDots-count;
@@ -302,7 +315,7 @@ var App = (function() {
     var graphW = parseInt(opt.dotCloudRadius * 3);
     var graphX = -parseInt(graphW/2);
     var margin = parseInt(opt.dotCloudRadius * 0.01);
-    var yStep = parseInt(opt.dotCellSize*1.2);
+    var yStep = parseInt(dotCellSize*1.2);
     var barW = parseInt(graphW / totalYears - margin);
     var spiralPoints = spiral(opt.graphStackW);
     var spiralCount = spiralPoints.length;
@@ -376,7 +389,7 @@ var App = (function() {
   function loadListeners(){
     $(window).on('resize', onResize);
 
-    $container.on('click', function(e){
+    $(document).on('click', function(e){
       if (e.shiftKey) go(-1);
       else go(1);
     });
@@ -411,6 +424,7 @@ var App = (function() {
     var cellH = opt.spriteCellH;
     var halfGroupW = opt.spriteGroupW/2;
     var halfGroupH = opt.spriteGroupH/2;
+    var spriteCellSize = parseInt($container.width() / 178.0);
     for (var row=0; row<opt.spriteGroupH; row++) {
       for (var col=0; col<opt.spriteGroupW; col++) {
         var x = cellW * col - halfGroupW * cellW;
@@ -419,7 +433,7 @@ var App = (function() {
         spritePositionsFrom.push(x, y, z);
         var txy = toRadial(x, y, cellW, cellH);
         spritePositionsTo.push(txy[0], txy[1], z);
-        sizes.push(opt.spriteCellSize);
+        sizes.push(spriteCellSize);
       }
     }
     var cellOffsets = [];
