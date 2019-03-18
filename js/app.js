@@ -121,11 +121,14 @@ var App = (function() {
   var spritePositionsFrom, spritePositionsTo;
   var spriteGeometry, spriteUniforms;
 
-  var step, zoomStartZ, zoomEndZ, isZooming, zoomStart, zoomEnd;
+  var step, zoomStartPos, zoomEndPos, isZooming, zoomStart, zoomEnd;
   var isColorShifting, colorShiftStart, colorShiftEnd;
   var isBreakingdown, breakdownStart, breakdownEnd;
   var isRotating, rotationStart, rotationEnd, rotatePositionStart, rotateRadiansFrom, rotateRadiansTo;
   var isGraphAnimating, graphStart, graphTransitionEnd, graphEnd;
+  var isLooking, lookStart, lookEnd, lookStartPos, lookEndPos;
+
+  var transitionPositionsFrom, transitionPositionsTo;
 
   var $debug, $cameraPos;
 
@@ -203,10 +206,12 @@ var App = (function() {
 
     switch(step) {
       case 1:
-        queueZoom(56, opt.zoomDuration);
+        var pos = camera.position.clone();
+        queueZoom(pos.setZ(56), opt.zoomDuration);
         break;
       case 2:
-        queueZoom(31258, opt.zoomDuration);
+        var pos = camera.position.clone();
+        queueZoom(pos.setZ(31258), opt.zoomDuration);
         break;
       case 3:
         queueRotation(direction, opt.rotationDuration);
@@ -228,6 +233,15 @@ var App = (function() {
         break;
       case 8:
         $("#years").removeClass("active");
+        break;
+      case 9:
+        var pos = camera.position.clone();
+        queueZoom(pos.setZ(56), opt.zoomDuration);
+        queueBreakdown(direction, opt.breakdownDuration, dotPositionsGraph, dotPositionsFrom)
+        break;
+      case 10:
+        var pos = camera.position.clone();
+        queueZoom(pos.setZ(5.6), opt.zoomDuration);
         break;
       default:
         break;
@@ -411,7 +425,7 @@ var App = (function() {
     renderer.setPixelRatio( 2 );
     $container.append(renderer.domElement);
 
-    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls = new THREE.OrbitControls(camera, $("#app")[0]);
 
     // scene.add(new THREE.AxesHelper(10000));
   }
@@ -476,12 +490,16 @@ var App = (function() {
     camera.updateProjectionMatrix();
   }
 
-  function queueBreakdown(direction, duration) {
+  function queueBreakdown(direction, duration, posFrom, posTo) {
     if (isBreakingdown) return false;
 
     isBreakingdown = true;
     breakdownStart = new Date().getTime();
     breakdownEnd = breakdownStart + duration;
+
+
+    transitionPositionsFrom = posFrom===undefined ? dotPositionsFrom : posFrom;
+    transitionPositionsTo = posTo===undefined ? dotPositionsBreakdown : posTo;
   }
 
   function queueDotColors(direction, duration) {
@@ -499,6 +517,16 @@ var App = (function() {
     graphStart = new Date().getTime();
     graphTransitionEnd = graphStart + transition;
     graphEnd = graphTransitionEnd + duration;
+  }
+
+  function queueLookAt(direction, fromPos, toPos, duration) {
+    if (isLooking) return false;
+
+    isLooking = true;
+    lookStart = new Date().getTime();
+    lookEnd = lookStart + duration;
+    lookStartPos = fromPos;
+    lookEndPos = toPos;
   }
 
   function queueRotation(direction, duration){
@@ -519,12 +547,11 @@ var App = (function() {
     }
   }
 
-  function queueZoom(z, duration){
+  function queueZoom(position, duration){
     if (isZooming) return false;
-
     isZooming = true;
-    zoomStartZ = camera.position.z;
-    zoomEndZ = z;
+    zoomStartPos = camera.position.clone();
+    zoomEndPos = position;
     zoomStart = new Date().getTime();
     zoomEnd = zoomStart + duration;
   }
@@ -537,7 +564,7 @@ var App = (function() {
   function render(){
     var now = new Date().getTime();
 
-    if (step <= 2) {
+    if (step <= 2 || step >= 9) {
       if (isSpriteTweening) {
         tweenSprites(spriteTweenDirection, spriteTweenStart, now);
       } else if (spriteTweenDirection > 0 && camera.position.z > opt.spriteTweenZThreshold) {
@@ -551,6 +578,10 @@ var App = (function() {
       tweenZoom(now);
     } else if (isRotating) {
       tweenRotate(now);
+    }
+
+    if (isLooking) {
+      tweenLook(now);
     }
 
     if (isColorShifting) {
@@ -583,7 +614,7 @@ var App = (function() {
     nprogress = EasingFunctions.easeInOutCubic(nprogress);
     var vertices = dotGeometry.attributes.position.array;
     for (var i=0; i<vertices.length; i++) {
-      vertices[i] = lerp(dotPositionsFrom[i], dotPositionsBreakdown[i], nprogress);
+      vertices[i] = lerp(transitionPositionsFrom[i], transitionPositionsTo[i], nprogress);
     }
 
     dotGeometry.attributes.position.needsUpdate = true;
@@ -620,6 +651,20 @@ var App = (function() {
     }
 
     dotGeometry.attributes.position.needsUpdate = true;
+  }
+
+  function tweenLook(t) {
+    var nprogress = norm(t, lookStart, lookEnd);
+    if (nprogress >= 1) {
+      isLooking = false;
+      nprogress = 1;
+    }
+
+    nprogress = EasingFunctions.easeInOutQuart(nprogress);
+    var newPos = new THREE.Vector3();
+    newPos = newPos.lerpVectors(lookStartPos, lookEndPos, nprogress)
+
+    camera.lookAt(newPos);
   }
 
   function tweenRotate(t){
@@ -676,10 +721,10 @@ var App = (function() {
     }
 
     nprogress = EasingFunctions.easeInOutQuart(nprogress);
-    var newZ = lerp(zoomStartZ, zoomEndZ, nprogress);
+    var newPos = new THREE.Vector3();
+    newPos = newPos.lerpVectors(zoomStartPos, zoomEndPos, nprogress)
 
-    camera.position.z = newZ;
-
+    camera.position.copy(newPos);
   }
 
   return App;
