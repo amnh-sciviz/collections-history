@@ -118,8 +118,7 @@ var App = (function() {
   var dotGeometry, dotUniforms;
 
   var isSpriteTweening, spriteTweenDirection, spriteTweenStart;
-  var spritePositionsFrom, spritePositionsTo;
-  var spriteGeometry, spriteUniforms;
+  var spritePositions, spriteGeometry, spriteUniforms;
 
   var step, zoomStartPos, zoomEndPos, isZooming, zoomStart, zoomEnd;
   var isColorShifting, colorShiftStart, colorShiftEnd;
@@ -142,8 +141,8 @@ var App = (function() {
       "spriteH": 128,
       "spriteGroupW": 32,
       "spriteGroupH": 32,
-      "spriteCellW": 1,
-      "spriteCellH": 1,
+      "spriteCellW": 0.55,
+      "spriteCellH": 0.55,
       // "spriteCellSize": 8.0,
       "spriteTweenDuration": 2000,
       "spriteTweenZThreshold": 54,
@@ -220,31 +219,37 @@ var App = (function() {
         queueZoom(pos.setZ(31258), opt.zoomDuration);
         break;
       case 5:
+        $("#total").addClass("active");
+        break;
+      case 6:
+        $("#total").removeClass("active");
+        break;
+      case 7:
         queueRotation(direction, opt.rotationDuration);
         queueDotColors(direction, opt.colorShiftDuration);
         queueBreakdown(direction, opt.breakdownDuration);
         break;
-      case 6:
+      case 8:
         $("#divisions").addClass("active");
         break;
-      case 7:
+      case 9:
         $("#divisions").removeClass("active");
         break;
-      case 8:
+      case 10:
         queueRotation(-direction, opt.rotationDuration);
         queueGraph(direction, opt.graphDuration, opt.graphTransition);
         break;
-      case 9:
+      case 11:
         $("#years").addClass("active");
         break;
-      case 10:
+      case 12:
         $("#years").removeClass("active");
         break;
-      case 11:
+      case 13:
         var pos = camera.position.clone();
         queueZoomToPoint(direction, parseInt(totalDots*0.99), pos.setZ(56), opt.zoomDuration);
         break;
-      case 12:
+      case 14:
         var pos = camera.position.clone();
         queueZoom(pos.setZ(5.6), opt.zoomDuration);
         break;
@@ -287,7 +292,7 @@ var App = (function() {
     // determine starting positions
     for (var i=0; i<totalDots; i++) {
       sizes.push(dotCellSize);
-      if (i <= 0) dotPositionsFrom.push(-opt.spriteCellW/2, -opt.spriteCellW/2, 0);
+      if (i <= 0) dotPositionsFrom.push(-opt.spriteCellW/2, -opt.spriteCellH/2, 0);
       else {
         var xyz = random3dPointInSphere(opt.dotCloudRadius)
         dotPositionsFrom.push(xyz[0], xyz[1], xyz[2]);
@@ -436,24 +441,27 @@ var App = (function() {
   }
 
   function loadSprites(){
-    spritePositionsFrom = [];
-    spritePositionsTo = [];
+    spritePositions = [];
+
     var sizes = [];
     var cellW = opt.spriteCellW;
     var cellH = opt.spriteCellH;
     var halfGroupW = opt.spriteGroupW/2;
     var halfGroupH = opt.spriteGroupH/2;
     var spriteCellSize = parseInt($container.width() / 178.0);
-    for (var row=0; row<opt.spriteGroupH; row++) {
-      for (var col=0; col<opt.spriteGroupW; col++) {
-        var x = cellW * col - halfGroupW * cellW;
-        var y = cellH * row - halfGroupH * cellH;
-        var z = 0;
-        spritePositionsFrom.push(x, y, z);
-        var txy = toRadial(x, y, cellW, cellH);
-        spritePositionsTo.push(txy[0], txy[1], z);
-        sizes.push(spriteCellSize);
+    var count = opt.spriteGroupH * opt.spriteGroupW;
+    var z = 0;
+    var goldenRatio = 2.39983333;
+
+    for (var i=0; i<count; i++) {
+      sizes.push(spriteCellSize);
+      if (i===0) {
+        spritePositions.push(0, 0, z);
+        continue;
       }
+      var x = cellW * Math.sqrt(i+1) * Math.cos((i+1) * goldenRatio);
+      var y = cellH * Math.sqrt(i+1) * Math.sin((i+1) * goldenRatio);
+      spritePositions.push(x, y, z);
     }
     var cellOffsets = [];
     for (var row=0; row<opt.spriteH; row++) {
@@ -462,7 +470,7 @@ var App = (function() {
       }
     }
     spriteGeometry = new THREE.BufferGeometry();
-    spriteGeometry.addAttribute('position', new THREE.Float32BufferAttribute(spritePositionsFrom.slice(0), 3).setDynamic(true));
+    spriteGeometry.addAttribute('position', new THREE.Float32BufferAttribute(spritePositions.slice(), 3));
     spriteGeometry.addAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
     spriteGeometry.addAttribute('cellOffset', new THREE.Float32BufferAttribute(cellOffsets, 2));
 
@@ -556,7 +564,10 @@ var App = (function() {
   }
 
   function queueZoom(position, duration){
-    if (isZooming) return false;
+    if (isZooming) {
+      step -= 1;
+      return false;
+    }
     isZooming = true;
     zoomStartPos = camera.position.clone();
     zoomEndPos = position;
@@ -723,15 +734,15 @@ var App = (function() {
 
     // ease between grid and radial positions
     nprogress = EasingFunctions.easeInOutCubic(nprogress);
-    var vertices = spriteGeometry.attributes.position.array;
-    for (var i=0; i<vertices.length; i++) {
-      vertices[i] = lerp(spritePositionsFrom[i], spritePositionsTo[i], nprogress);
-    }
+    // var vertices = spriteGeometry.attributes.position.array;
+    // for (var i=0; i<vertices.length; i++) {
+    //   vertices[i] = lerp(spritePositionsFrom[i], spritePositionsTo[i], nprogress);
+    // }
 
     // adjust alpha
     spriteUniforms.groupAlpha.value = 1.0-nprogress;
     dotUniforms.groupAlpha.value = nprogress;
-    spriteGeometry.attributes.position.needsUpdate = true;
+    // spriteGeometry.attributes.position.needsUpdate = true;
   }
 
   function tweenZoom(t){

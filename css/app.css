@@ -43,7 +43,8 @@ body {
   opacity: 1;
 }
 
-#dot {
+#dot,
+#total {
   color: black;
   text-align: center;
   display:flex;
@@ -51,6 +52,10 @@ body {
   justify-content: center; /* Horizontal center alignment */
   font-size: 3vw;
   font-weight: bold;
+}
+#total {
+  color: white;
+  text-shadow: 0 0 50px black;
 }
 
 .division {
