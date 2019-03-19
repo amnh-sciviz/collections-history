@@ -22,6 +22,7 @@ tileCount = gridW * gridH
 
 baseImage = Image.new('RGB', (imgW, imgH), (0,0,0))
 filenames = glob.glob(a.INPUT_FILES)
+filenames = sorted(filenames)
 
 # randomly select x images
 if len(filenames) > tileCount:
