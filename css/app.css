@@ -3,6 +3,13 @@ body {
   font-family: sans-serif;
 }
 
+img,
+video {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
 .app,
 .canvas,
 .text,
@@ -35,7 +42,7 @@ body {
 }
 .slide {
   opacity: 0;
-  transition: opacity 1s ease-in-out;
+  transition: opacity 1s ease-in-out, transform 1s ease-in-out;
   color: white;
   font-size: 1.5vw;
 }
@@ -120,6 +127,38 @@ body {
 }
 .year:last-child {
   text-align: right;
+}
+
+#weevil,
+#evolution,
+#gilder {
+  background: black;
+}
+
+#weevil > div {
+  width: 42vw;
+  margin: 14vw auto 0;
+}
+#weevil.move {
+  transform: translate3d(-33vw, -15vw, 0) scale3d(0.8, 0.8, 0.8);
+}
+#evolution {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+}
+#evolution .asset {
+  flex-basis: 25%;
+  flex-grow: 1;
+}
+#gilder {
+  display:flex;
+  align-items: center; /* Vertical center alignment */
+  justify-content: center; /* Horizontal center alignment */
+}
+#gilder > div {
+  width: 60vw;
 }
 
 .debug {

@@ -251,7 +251,18 @@ var App = (function() {
         break;
       case 14:
         var pos = camera.position.clone();
-        queueZoom(pos.setZ(5.6), opt.zoomDuration);
+        queueZoom(pos.setZ(2.3), opt.zoomDuration);
+        break;
+      case 15:
+        $("#weevil").addClass("active");
+        break;
+      case 16:
+        $("#weevil").addClass("move").removeClass("active");
+        $("#evolution").addClass("active");
+        break;
+      case 17:
+        $("#evolution").removeClass("active");
+        $("#gilder").addClass("active");
         break;
       default:
         break;
