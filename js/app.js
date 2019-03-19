@@ -124,7 +124,7 @@ var App = (function() {
   var step, zoomStartPos, zoomEndPos, isZooming, zoomStart, zoomEnd;
   var isColorShifting, colorShiftStart, colorShiftEnd;
   var isBreakingdown, breakdownStart, breakdownEnd;
-  var isRotating, rotationStart, rotationEnd, rotatePositionStart, rotateRadiansFrom, rotateRadiansTo;
+  var isRotating, rotationStart, rotationEnd, rotatePositionStart, rotateRadiansFrom, rotateRadiansTo, isRotated;
   var isGraphAnimating, graphStart, graphTransitionEnd, graphEnd;
   var isLooking, lookStart, lookEnd, lookStartPos, lookEndPos;
 
@@ -210,36 +210,41 @@ var App = (function() {
         queueZoom(pos.setZ(56), opt.zoomDuration);
         break;
       case 2:
+        $("#dot").addClass("active");
+        break;
+      case 3:
+        $("#dot").removeClass("active");
+        break;
+      case 4:
         var pos = camera.position.clone();
         queueZoom(pos.setZ(31258), opt.zoomDuration);
         break;
-      case 3:
+      case 5:
         queueRotation(direction, opt.rotationDuration);
         queueDotColors(direction, opt.colorShiftDuration);
         queueBreakdown(direction, opt.breakdownDuration);
         break;
-      case 4:
+      case 6:
         $("#divisions").addClass("active");
         break;
-      case 5:
+      case 7:
         $("#divisions").removeClass("active");
         break;
-      case 6:
+      case 8:
         queueRotation(-direction, opt.rotationDuration);
         queueGraph(direction, opt.graphDuration, opt.graphTransition);
         break;
-      case 7:
+      case 9:
         $("#years").addClass("active");
         break;
-      case 8:
+      case 10:
         $("#years").removeClass("active");
         break;
-      case 9:
+      case 11:
         var pos = camera.position.clone();
-        queueZoom(pos.setZ(56), opt.zoomDuration);
-        queueBreakdown(direction, opt.breakdownDuration, dotPositionsGraph, dotPositionsFrom)
+        queueZoomToPoint(direction, parseInt(totalDots*0.99), pos.setZ(56), opt.zoomDuration);
         break;
-      case 10:
+      case 12:
         var pos = camera.position.clone();
         queueZoom(pos.setZ(5.6), opt.zoomDuration);
         break;
@@ -532,6 +537,9 @@ var App = (function() {
   function queueRotation(direction, duration){
     if (isRotating) return false;
 
+    if (direction > 0) isRotated = true;
+    else isRotated = false;
+
     isRotating = true;
     rotationStart = new Date().getTime();
     rotationEnd = rotationStart + duration;
@@ -556,6 +564,19 @@ var App = (function() {
     zoomEnd = zoomStart + duration;
   }
 
+  function queueZoomToPoint(direction, index, position, duration) {
+    var points = dotGeometry.attributes.position.array;
+    var delta = new THREE.Vector3(-points[index*3], -points[index*3+1], -points[index*3+2]);
+    var pointsTo = points.slice();
+    for (var i=0; i<totalDots; i++) {
+      pointsTo[i*3] += delta.x;
+      pointsTo[i*3+1] += delta.y;
+      pointsTo[i*3+2] += delta.z;
+    }
+    queueZoom(position, duration);
+    queueBreakdown(direction, duration, points, pointsTo)
+  }
+
   function renderDebug(){
     var pos = camera.position
     $cameraPos.text(pos.x + ", " + pos.y + ", " + pos.z);
@@ -564,7 +585,7 @@ var App = (function() {
   function render(){
     var now = new Date().getTime();
 
-    if (step <= 2 || step >= 9) {
+    if (!isRotated && !isRotating) {
       if (isSpriteTweening) {
         tweenSprites(spriteTweenDirection, spriteTweenStart, now);
       } else if (spriteTweenDirection > 0 && camera.position.z > opt.spriteTweenZThreshold) {

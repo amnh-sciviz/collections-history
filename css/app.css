@@ -43,6 +43,16 @@ body {
   opacity: 1;
 }
 
+#dot {
+  color: black;
+  text-align: center;
+  display:flex;
+  align-items: center; /* Vertical center alignment */
+  justify-content: center; /* Horizontal center alignment */
+  font-size: 3vw;
+  font-weight: bold;
+}
+
 .division {
   font-weight: bold;
   display: block;
@@ -99,6 +109,12 @@ body {
 .year {
   display: inline-block;
   width: 12vw;
+}
+.year:first-child {
+  text-align: left;
+}
+.year:last-child {
+  text-align: right;
 }
 
 .debug {
